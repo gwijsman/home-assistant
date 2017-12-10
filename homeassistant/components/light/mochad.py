@@ -26,6 +26,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
         vol.Optional(CONF_NAME): cv.string,
         vol.Required(CONF_ADDRESS): cv.x10_address,
         vol.Optional(mochad.CONF_COMM_TYPE): cv.string,
+        vol.Optional(mochad.CONF_MAX_XDIM_VALUE): cv.byte,
     }]
 })
 
@@ -50,6 +51,8 @@ class MochadLight(Light):
         self._name = dev.get(CONF_NAME,
                              'x10_light_dev_{}'.format(self._address))
         self._comm_type = dev.get(mochad.CONF_COMM_TYPE, 'pl')
+        self._max_xdim_value = dev.get(mochad.CONF_MAX_XDIM_VALUE, 255)
+        _LOGGER.debug("max xdim value for %s is %s", self._address, self._max_xdim_value)
         self.device = device.Device(ctrl, self._address,
                                     comm_type=self._comm_type)
         self._brightness = 0
@@ -88,9 +91,10 @@ class MochadLight(Light):
 
     def turn_on(self, **kwargs):
         """Send the command to turn the light on."""
-        self._brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
+        self._brightness = kwargs.get(ATTR_BRIGHTNESS, 255) 
         with mochad.REQ_LOCK:
-            self.device.send_cmd("xdim {}".format(self._brightness))
+            xdim_value = self._brightness * self._max_xdim_value / 255 
+            self.device.send_cmd("xdim {}".format(xdim_value))
             self._controller.read_data()
         self._state = True
 
